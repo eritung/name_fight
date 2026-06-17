@@ -326,6 +326,14 @@ const SKILL_WORDS={
 function pickWord(arr, seed){return arr[seed % arr.length];}
 
 function generateSkills(name, dominant, totalStrokes, chars){
+  // ── 彩蛋：劉世華 ──
+  if(name==='劉世華'){
+    return [
+      {name:'鹹豬手突擊',    type:'atk', mult:1.6, miss:0.35, desc:'伸出鹹豬手，對手極度不適，有機率因憤怒反擊更猛', badge:'atk'},
+      {name:'地鐵門縫蹭',    type:'debuff', mult:0, miss:0.1, desc:'趁人不備靠近，使對手速度因戒心下降', badge:'spd'},
+      {name:'劉世華·色狼終極靠近術', type:'ult', mult:2.0, miss:0.4, desc:'全身而上，然而失手率奇高，常常直接跌倒', badge:'ult', cooldown:3},
+    ];
+  }
   const W=SKILL_WORDS[dominant]||SKILL_WORDS.earth;
   const seed1=totalStrokes, seed2=chars.length*7+totalStrokes%3;
   const wordA=pickWord(W.a, seed1);
