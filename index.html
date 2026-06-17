@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>姓名決鬥場</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;500&display=swap');
+:root{
+  --ink:#0e0c0a;--ink2:#1c1814;--paper:#f5f0e8;--paper2:#ede7d9;
+  --gold:#c9a84c;--gold-light:#e8c96a;
+  --p1-light:#7b6fc8;--p2-light:#c0392b;
+  --muted:#7a6e60;--border:rgba(201,168,76,0.25);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--ink);color:var(--paper);min-height:100vh;padding:2rem 1rem 4rem;
+  background-image:radial-gradient(ellipse at 20% 0%,rgba(74,63,138,0.12) 0%,transparent 60%),radial-gradient(ellipse at 80% 0%,rgba(138,43,26,0.12) 0%,transparent 60%);}
+
+/* ── 標題區 ── */
+.page-header{text-align:center;margin-bottom:2rem;}
+.page-header h1{font-family:'Noto Serif TC',serif;font-size:clamp(2rem,5vw,3.2rem);font-weight:900;letter-spacing:0.3em;color:var(--gold);}
+.page-header p{font-size:13px;color:var(--muted);letter-spacing:0.2em;margin-top:6px;}
+.title-rule{display:flex;align-items:center;gap:12px;margin:12px auto 0;width:fit-content;}
+.title-rule span{width:60px;height:0.5px;background:var(--border);}
+.title-rule i{color:var(--gold);font-size:10px;}
+
+/* ── 整體雙欄布局 ── */
+.page-wrap{display:flex;gap:1.5rem;align-items:flex-start;max-width:1160px;margin:0 auto;}
+.main-col{flex:1;min-width:0;}
+.side-col{width:260px;flex-shrink:0;position:sticky;top:1.5rem;}
+
+/* ── 戰況看板（右側固定）── */
+.battle-status{
+  background:var(--ink2);border:0.5px solid var(--border);border-radius:4px;
+  padding:1.25rem 1rem;
+  display:flex;flex-direction:column;gap:1rem;
+}
+.status-label{font-size:10px;color:var(--muted);letter-spacing:0.2em;text-align:center;margin-bottom:4px;}
+.status-vs{font-family:'Noto Serif TC',serif;font-size:18px;font-weight:900;color:var(--gold);text-align:center;padding:4px 0;}
+.status-divider{height:0.5px;background:var(--border);}
+.status-fighter{display:flex;flex-direction:column;gap:6px;}
+.status-name{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;letter-spacing:0.08em;}
+.status-name.p1c{color:var(--p1-light);}
+.status-name.p2c{color:var(--p2-light);}
+.status-hp-row{display:flex;align-items:center;gap:6px;}
+.status-hp-val{font-size:12px;font-weight:500;color:var(--paper2);min-width:32px;text-align:right;}
+.status-hp-track{flex:1;height:7px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;}
+.status-hp-fill{height:100%;border-radius:4px;transition:width 0.5s ease;}
+.status-hp-fill.p1f{background:var(--p1-light);}
+.status-hp-fill.p2f{background:var(--p2-light);}
+.status-round{font-size:11px;color:var(--muted);letter-spacing:0.1em;text-align:center;}
+.status-action{font-size:11px;color:var(--muted);text-align:center;min-height:32px;line-height:1.6;padding:4px 0;}
+
+/* ── 結果橫幅 ── */
+.result-banner{
+  margin-bottom:1.5rem;
+  background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.4);border-radius:4px;
+  padding:1.5rem;text-align:center;
+  display:none;
+}
+.result-banner.show{display:block;}
+.result-banner-title{font-family:'Noto Serif TC',serif;font-size:clamp(1.5rem,4vw,2.2rem);font-weight:900;color:var(--gold);letter-spacing:0.25em;margin-bottom:6px;}
+.result-banner-sub{font-size:13px;color:var(--muted);letter-spacing:0.1em;}
+
+/* ── 命運卡 ── */
+.fate-section{display:grid;grid-template-columns:1fr 56px 1fr;gap:1rem;margin-bottom:1.5rem;}
+.fate-card{background:var(--ink2);border:0.5px solid var(--border);border-radius:4px;padding:1rem 1.25rem;min-height:70px;display:flex;align-items:center;gap:10px;}
+.fate-icon{font-size:22px;flex-shrink:0;font-family:'Noto Serif TC',serif;}
+.fate-name{font-family:'Noto Serif TC',serif;font-size:13px;font-weight:700;color:var(--gold-light);margin-bottom:3px;}
+.fate-desc{font-size:11px;color:var(--muted);}
+.fate-card.blessing{border-color:rgba(201,168,76,0.5);background:rgba(201,168,76,0.04);}
+.fate-card.curse{border-color:rgba(192,57,43,0.4);background:rgba(192,57,43,0.04);}
+.fate-placeholder{color:var(--muted);font-size:11px;font-style:italic;}
+.fate-col{display:flex;align-items:center;justify-content:center;}
+.fate-col-label{font-size:10px;color:var(--muted);letter-spacing:0.15em;}
+
+/* ── 戰士卡 ── */
+.arena{}
+.fighters{display:grid;grid-template-columns:1fr 56px 1fr;gap:1rem;align-items:start;margin-bottom:1.5rem;}
+.fighter-card{background:var(--ink2);border:0.5px solid var(--border);border-radius:4px;padding:1.5rem 1.25rem 1.25rem;position:relative;}
+.fighter-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:4px 4px 0 0;}
+.fighter-card.p1::before{background:var(--p1-light);}
+.fighter-card.p2::before{background:var(--p2-light);}
+.fighter-card.winner{border-color:rgba(201,168,76,0.6);background:rgba(201,168,76,0.04);}
+.avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;margin:0 auto 10px;border:1.5px solid var(--border);}
+.p1 .avatar{background:rgba(74,63,138,0.2);color:var(--p1-light);border-color:rgba(123,111,200,0.4);}
+.p2 .avatar{background:rgba(138,43,26,0.2);color:var(--p2-light);border-color:rgba(192,57,43,0.4);}
+.name-input-wrap{position:relative;margin-bottom:1rem;}
+.name-input-label{display:block;font-size:10px;color:var(--gold);letter-spacing:0.25em;text-align:center;margin-bottom:6px;}
+.name-input{width:100%;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.35);border-radius:3px;color:var(--paper);font-family:'Noto Serif TC',serif;font-size:21px;font-weight:700;text-align:center;letter-spacing:0.25em;padding:10px 8px;outline:none;transition:border-color 0.2s,background 0.2s;}
+.name-input:focus{border-color:var(--gold);background:rgba(201,168,76,0.1);}
+.name-input::placeholder{color:rgba(201,168,76,0.35);font-weight:400;font-size:15px;letter-spacing:0.1em;}
+.hp-section{margin-bottom:1rem;}
+.hp-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+.hp-top span:first-child{font-size:11px;color:var(--muted);letter-spacing:0.15em;}
+.hp-top span:last-child{font-size:13px;font-weight:500;color:var(--paper);}
+.hp-track{height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;}
+.hp-fill{height:100%;border-radius:3px;transition:width 0.5s ease;}
+.p1 .hp-fill{background:var(--p1-light);}
+.p2 .hp-fill{background:var(--p2-light);}
+.stats{margin-bottom:1rem;}
+.stat-row{display:flex;align-items:center;gap:8px;margin:5px 0;}
+.stat-label{font-size:11px;color:var(--muted);letter-spacing:0.1em;width:22px;flex-shrink:0;}
+.stat-track{flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;}
+.stat-fill{height:100%;border-radius:2px;transition:width 0.4s ease;}
+.p1 .stat-fill{background:rgba(123,111,200,0.7);}
+.p2 .stat-fill{background:rgba(192,57,43,0.7);}
+.stat-val{font-size:12px;font-weight:500;color:var(--paper2);width:24px;text-align:right;flex-shrink:0;}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem;}
+.tag{font-size:10px;padding:2px 8px;border-radius:2px;letter-spacing:0.05em;border:0.5px solid;}
+.tag-water{background:rgba(52,152,219,0.12);color:#5dade2;border-color:rgba(93,173,226,0.3);}
+.tag-fire{background:rgba(192,57,43,0.12);color:#e74c3c;border-color:rgba(231,76,60,0.3);}
+.tag-wood{background:rgba(39,174,96,0.12);color:#52be80;border-color:rgba(82,190,128,0.3);}
+.tag-metal{background:rgba(149,165,166,0.12);color:#aab7b8;border-color:rgba(170,183,184,0.3);}
+.tag-earth{background:rgba(211,84,0,0.12);color:#ca8a2f;border-color:rgba(202,138,47,0.3);}
+.tag-neutral{background:rgba(255,255,255,0.05);color:var(--muted);border-color:rgba(255,255,255,0.1);}
+.skill-section{border-top:0.5px solid rgba(255,255,255,0.07);padding-top:10px;}
+.skill-section-title{font-size:10px;color:var(--muted);letter-spacing:0.2em;margin-bottom:8px;}
+.skill-item{background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.07);border-radius:3px;padding:7px 10px;margin-bottom:6px;}
+.skill-name-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;}
+.skill-name{font-family:'Noto Serif TC',serif;font-size:13px;font-weight:700;color:var(--gold-light);letter-spacing:0.05em;}
+.skill-badge{font-size:9px;padding:1px 5px;border-radius:2px;border:0.5px solid;}
+.badge-atk{background:rgba(192,57,43,0.15);color:#e74c3c;border-color:rgba(231,76,60,0.3);}
+.badge-def{background:rgba(52,152,219,0.15);color:#5dade2;border-color:rgba(93,173,226,0.3);}
+.badge-spd{background:rgba(39,174,96,0.15);color:#52be80;border-color:rgba(82,190,128,0.3);}
+.badge-ult{background:rgba(201,168,76,0.15);color:var(--gold);border-color:rgba(201,168,76,0.4);}
+.skill-desc{font-size:11px;color:var(--muted);}
+.skill-cd{font-size:9px;color:var(--muted);}
+.vs-col{display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:3.5rem;gap:10px;}
+.vs-text{font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--gold);letter-spacing:0.15em;}
+.vs-dot{width:4px;height:4px;border-radius:50%;background:var(--border);}
+.fight-btn{display:block;width:100%;padding:14px;font-family:'Noto Serif TC',serif;font-size:17px;font-weight:700;letter-spacing:0.4em;color:var(--ink);background:var(--gold);border:none;border-radius:3px;cursor:pointer;transition:background 0.15s,transform 0.1s;margin-bottom:1.25rem;}
+.fight-btn:hover{background:var(--gold-light);}
+.fight-btn:active{transform:scale(0.985);}
+.fight-btn:disabled{background:rgba(201,168,76,0.3);color:rgba(0,0,0,0.4);cursor:not-allowed;}
+.battle-log{background:transparent;padding:0;min-height:60px;max-height:420px;overflow-y:auto;font-size:12px;line-height:1.85;scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.2) transparent;}
+.battle-log::-webkit-scrollbar{width:3px;}
+.battle-log::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.2);border-radius:2px;}
+.log-empty{color:var(--muted);font-style:italic;}
+.log-atk{color:var(--paper2);}
+.log-skill-p1{color:var(--p1-light);font-weight:500;}
+.log-skill-p2{color:var(--p2-light);font-weight:500;}
+.log-event{color:#e8a838;font-weight:500;}
+.log-miss{color:var(--muted);font-style:italic;}
+.log-fate{color:var(--gold);font-style:italic;}
+.log-sep{color:rgba(201,168,76,0.3);}
+.log-collapse{color:#e8a838;font-weight:700;}
+.log-revenge{color:#e74c3c;font-weight:700;}
+.log-revive{color:#a78bfa;font-weight:700;}
+
+/* 崩潰狀態角色卡 */
+.fighter-card.collapse-p1{border-color:rgba(231,76,60,0.6);box-shadow:0 0 16px rgba(231,76,60,0.15);}
+.fighter-card.collapse-p2{border-color:rgba(231,76,60,0.6);box-shadow:0 0 16px rgba(231,76,60,0.15);}
+.collapse-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:2px;background:rgba(231,76,60,0.15);color:#e74c3c;border:0.5px solid rgba(231,76,60,0.4);margin-top:6px;letter-spacing:0.1em;}
+.status-collapse{font-size:11px;color:#e74c3c;font-weight:500;text-align:center;letter-spacing:0.05em;}
+@media(max-width:720px){
+  .page-wrap{flex-direction:column;}
+  .side-col{width:100%;position:static;}
+  .battle-status{flex-direction:row;flex-wrap:wrap;justify-content:space-between;align-items:center;}
+  .status-vs{writing-mode:horizontal-tb;padding:0 8px;}
+  .fighters,.fate-section{grid-template-columns:1fr;}
+  .vs-col,.fate-col{flex-direction:row;padding-top:0;padding:0.5rem 0;}
+  .vs-text{font-size:18px;}
+}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>姓名決鬥場</h1>
+  <div class="title-rule"><span></span><i>✦</i><span></span></div>
+  <p>以名為劍，筆畫為刃，五行決勝負</p>
+  <p style="font-size:12px;color:rgba(201,168,76,0.5);margin-top:10px;letter-spacing:0.15em;">✦ 在下方輸入兩位戰士的名字，開始決鬥 ✦</p>
+</div>
+
+<div class="page-wrap">
+  <!-- 左側主內容 -->
+  <div class="main-col">
+    <!-- 結果橫幅 -->
+    <div class="result-banner" id="resultBanner">
+      <div class="result-banner-title" id="resultTitle"></div>
+      <div class="result-banner-sub" id="resultSub"></div>
+    </div>
+
+    <div class="arena">
+      <!-- 命運卡 -->
+      <div class="fate-section">
+        <div class="fate-card" id="fate1"><span class="fate-placeholder">命運卡將於開局前揭曉</span></div>
+        <div class="fate-col"><span class="fate-col-label">命運</span></div>
+        <div class="fate-card" id="fate2"><span class="fate-placeholder">命運卡將於開局前揭曉</span></div>
+      </div>
+
+  <div class="fighters">
+    <div class="fighter-card p1" id="card1">
+      <div class="avatar" id="av1">?</div>
+      <div class="name-input-wrap">
+        <label class="name-input-label">✦ 輸入戰士姓名 ✦</label>
+        <input class="name-input" id="name1" type="text" placeholder="輸入姓名" maxlength="6" value="吉伊卡哇" oninput="updateCard(1)"/>
+      </div>
+      <div class="hp-section">
+        <div class="hp-top"><span>HP</span><span id="hp1-val">—</span></div>
+        <div class="hp-track"><div class="hp-fill" id="hp1-bar" style="width:100%"></div></div>
+      </div>
+      <div class="stats">
+        <div class="stat-row"><span class="stat-label">攻</span><div class="stat-track"><div class="stat-fill" id="atk1-bar"></div></div><span class="stat-val" id="atk1">-</span></div>
+        <div class="stat-row"><span class="stat-label">防</span><div class="stat-track"><div class="stat-fill" id="def1-bar"></div></div><span class="stat-val" id="def1">-</span></div>
+        <div class="stat-row"><span class="stat-label">速</span><div class="stat-track"><div class="stat-fill" id="spd1-bar"></div></div><span class="stat-val" id="spd1">-</span></div>
+        <div class="stat-row"><span class="stat-label">氣</span><div class="stat-track"><div class="stat-fill" id="lck1-bar"></div></div><span class="stat-val" id="lck1">-</span></div>
+      </div>
+      <div class="tags" id="tags1"></div>
+      <div class="skill-section">
+        <div class="skill-section-title">專屬招式</div>
+        <div id="skills1"></div>
+      </div>
+    </div>
+    <div class="vs-col"><div class="vs-dot"></div><div class="vs-text">VS</div><div class="vs-dot"></div></div>
+    <div class="fighter-card p2" id="card2">
+      <div class="avatar" id="av2">?</div>
+      <div class="name-input-wrap">
+        <label class="name-input-label">✦ 輸入戰士姓名 ✦</label>
+        <input class="name-input" id="name2" type="text" placeholder="輸入姓名" maxlength="6" value="小八" oninput="updateCard(2)"/>
+      </div>
+      <div class="hp-section">
+        <div class="hp-top"><span>HP</span><span id="hp2-val">—</span></div>
+        <div class="hp-track"><div class="hp-fill" id="hp2-bar" style="width:100%"></div></div>
+      </div>
+      <div class="stats">
+        <div class="stat-row"><span class="stat-label">攻</span><div class="stat-track"><div class="stat-fill" id="atk2-bar"></div></div><span class="stat-val" id="atk2">-</span></div>
+        <div class="stat-row"><span class="stat-label">防</span><div class="stat-track"><div class="stat-fill" id="def2-bar"></div></div><span class="stat-val" id="def2">-</span></div>
+        <div class="stat-row"><span class="stat-label">速</span><div class="stat-track"><div class="stat-fill" id="spd2-bar"></div></div><span class="stat-val" id="spd2">-</span></div>
+        <div class="stat-row"><span class="stat-label">氣</span><div class="stat-track"><div class="stat-fill" id="lck2-bar"></div></div><span class="stat-val" id="lck2">-</span></div>
+      </div>
+      <div class="tags" id="tags2"></div>
+      <div class="skill-section">
+        <div class="skill-section-title">專屬招式</div>
+        <div id="skills2"></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="fight-btn" id="fightBtn" onclick="startBattle()">決　鬥</button>
+</div><!-- /arena -->
+</div><!-- /main-col -->
+
+<!-- 右側看板 -->
+<div class="side-col">
+  <div class="battle-status" id="battleStatus">
+    <div class="status-label">即時戰況</div>
+    <div class="status-fighter">
+      <div class="status-name p1c" id="sn1">—</div>
+      <div class="status-hp-row">
+        <div class="status-hp-track"><div class="status-hp-fill p1f" id="shp1-bar" style="width:100%"></div></div>
+        <div class="status-hp-val" id="shp1">—</div>
+      </div>
+    </div>
+    <div class="status-vs">VS</div>
+    <div class="status-fighter">
+      <div class="status-name p2c" id="sn2">—</div>
+      <div class="status-hp-row">
+        <div class="status-hp-track"><div class="status-hp-fill p2f" id="shp2-bar" style="width:100%"></div></div>
+        <div class="status-hp-val" id="shp2">—</div>
+      </div>
+    </div>
+    <div class="status-divider"></div>
+    <div class="status-round" id="sRound">準備中</div>
+    <div class="status-collapse" id="sCollapse"></div>
+    <div class="battle-log" id="log"></div>
+  </div>
+</div><!-- /side-col -->
+</div><!-- /page-wrap -->
+
+<script>
+const STROKES={
+  '一':1,'乙':1,'二':2,'十':2,'人':2,'八':2,'力':2,'又':2,'三':3,'口':3,'山':3,'土':3,'大':3,'女':3,'小':3,'子':3,'工':3,'弓':3,'才':3,
+  '中':4,'五':4,'六':4,'天':4,'心':4,'木':4,'水':4,'火':4,'文':4,'方':4,'王':4,'不':4,'主':5,'代':5,'北':5,'古':5,'外':5,'平':5,'本':5,'正':5,'生':5,'用':5,'目':5,'白':5,'石':5,
+  '亦':6,'光':6,'共':6,'全':6,'名':6,'合':6,'回':6,'地':6,'好':6,'字':6,'安':6,'成':6,'有':6,'朱':6,'江':6,'百':6,'竹':6,
+  '志':7,'李':7,'林':7,'武':7,'男':7,'秀':7,'良':7,'見':7,'里':7,
+  '周':8,'奇':8,'明':8,'昌':8,'炎':8,'直':8,'金':8,'青':8,
+  '亮':9,'信':9,'俊':9,'前':9,'南':9,'城':9,'建':9,'政':9,'春':9,'昭':9,'柳':9,'相':9,'美':9,'風':9,'侯':9,
+  '原':10,'孫':10,'峰':10,'海':10,'真':10,'祥':10,'能':10,'曹':10,
+  '國':11,'強':11,'彩':11,'深':11,'清':11,'理':11,
+  '勝':12,'博':12,'葛':12,'期':12,
+  '業':13,'義':13,'楓':13,'源':13,'聖':13,'瑞':13,
+  '嘉':14,'瑜':14,'銘':14,'維':14,'福':14,
+  '德':15,'諸':15,'廣':15,'樂':15,'賢':15,'輝':15,'操':16,
+};
+const ELEMENT_MAP={'氵':['water'],'水':['water'],'火':['fire'],'炎':['fire'],'灬':['fire'],'木':['wood'],'林':['wood'],'金':['metal'],'土':['earth'],'山':['earth'],'石':['earth']};
+const ELEMENT_INFO={water:{label:'水',cls:'tag-water'},fire:{label:'火',cls:'tag-fire'},wood:{label:'木',cls:'tag-wood'},metal:{label:'金',cls:'tag-metal'},earth:{label:'土',cls:'tag-earth'}};
+const CONQUERS={water:'fire',fire:'metal',metal:'wood',wood:'earth',earth:'water'};
+
+// ── 擴充詞庫：每屬性 8 個普招詞 + 4 個終極後綴 ──
+const SKILL_WORDS={
+  fire:{
+    a:['焰滅世','烈衝天','燃命掌','熾日擊','赤炎爪','焚天訣','炎龍破','火域斬'],
+    b:['烈魂踢','火舌旋','赤地衝','炎爆步','灼骨掌','燎原拳','火鳳衝','裂焰斬'],
+    ult:['·終焚','·天火降','·赤炎歸一','·焚滅乾坤'],
+    type_a:'atk',type_b:'atk',miss_a:0.2,miss_b:0.15,
+  },
+  water:{
+    a:['流封印','滄波擊','寒潮縛','冰鎖術','水牢陣','凍結印','玄冰掌','冽水封'],
+    b:['滄波擊','暗流斬','水刃旋','漩渦踏','潮湧衝','玄水刀','浪裂擊','寒流爪'],
+    ult:['·溟滅','·天河傾','·萬水歸淵','·冰封九天'],
+    type_a:'def',type_b:'atk',miss_a:0,miss_b:0.1,
+  },
+  wood:{
+    a:['根纏縛','藤縛術','荊棘陣','木靈縛','枝縛咒','蔓纏印','林縛式','葉縛訣'],
+    b:['葉刃陣','木刺衝','枝打擊','竹裂斬','花刃旋','藤鞭術','林嘯擊','木靈爪'],
+    ult:['·萬木歸','·千林合擊','·木靈歸源','·蒼林毀滅'],
+    type_a:'debuff',type_b:'atk',miss_a:0.1,miss_b:0.08,
+  },
+  metal:{
+    a:['鐵壁','金盾式','銅甲印','鋼鐵護','磐石衛','金剛壁','鐵身訣','玄鐵防'],
+    b:['劍氣斬','金刃切','鐵拳碎','鋼爪裂','劍光閃','金剛擊','破甲斬','利刃貫'],
+    ult:['·金剛破','·萬鋼合一','·金鋒無敵','·碎鐵天崩'],
+    type_a:'def',type_b:'atk',miss_a:0,miss_b:0.18,
+  },
+  earth:{
+    a:['山嶽壓','大地踏','岩崩術','土盾護','石壓式','厚土踐','磐石衝','崩山掌'],
+    b:['厚土護','地裂踢','岩爆拳','土霆擊','山崩爪','地湧掌','磐石砸','土龍尾'],
+    ult:['·震地崩','·山河裂','·大地歸宗','·萬土滅天'],
+    type_a:'atk',type_b:'def',miss_a:0.1,miss_b:0,
+  },
+};
+
+// 根據筆畫數選詞（讓同屬性不同人有不同招）
+function pickWord(arr, seed){return arr[seed % arr.length];}
+
+function generateSkills(name, dominant, totalStrokes, chars){
+  const W=SKILL_WORDS[dominant]||SKILL_WORDS.earth;
+  const seed1=totalStrokes, seed2=chars.length*7+totalStrokes%3;
+  const wordA=pickWord(W.a, seed1);
+  const wordB=pickWord(W.b, seed2);
+  const ultSuffix=pickWord(W.ult, (seed1+seed2)%4);
+  return [
+    {name:`${chars[0]}${wordA}`, type:W.type_a, mult:W.type_a==='atk'?1.5:0, miss:W.miss_a, desc:skillDesc(W.type_a,wordA), badge:W.type_a==='atk'?'atk':W.type_a==='def'?'def':'spd'},
+    {name:`${chars[Math.min(1,chars.length-1)]}${wordB}`, type:W.type_b, mult:W.type_b==='atk'?1.4:0, miss:W.miss_b, desc:skillDesc(W.type_b,wordB), badge:W.type_b==='atk'?'atk':W.type_b==='def'?'def':'spd'},
+    {name:`${name}${ultSuffix}`, type:'ult', mult:2.2, miss:0.25, desc:`名中蘊含 ${totalStrokes} 筆畫之力，傾力一擊`, badge:'ult', cooldown:3},
+  ];
+}
+
+function skillDesc(type, word){
+  if(type==='atk') return `以【${word}】之勢猛攻，重創敵方`;
+  if(type==='def') return `以【${word}】之法守身，削減所受傷害`;
+  if(type==='debuff') return `以【${word}】縛住敵方，使其速度下降`;
+  return `全力施展【${word}】`;
+}
+
+function calcStats(name){
+  if(!name)return null;
+  const chars=[...name];
+  const totalStrokes=chars.reduce((a,c)=>a+getStrokes(c),0);
+  const elements=chars.map(getElement);
+  const charCount=chars.length;
+  const ec={};elements.forEach(e=>{ec[e]=(ec[e]||0)+1;});
+  const dominant=Object.entries(ec).sort((a,b)=>b[1]-a[1])[0][0];
+  const b={water:{def:8,spd:5},fire:{atk:10,lck:5},wood:{atk:5,def:5},metal:{def:10,atk:3},earth:{def:5,lck:8}}[dominant]||{};
+  const atk=Math.min(99,Math.round((totalStrokes*3+charCount*8)%60+25+(b.atk||0)));
+  const def=Math.min(99,Math.round((totalStrokes*2+charCount*5)%50+20+(b.def||0)));
+  const spd=Math.min(99,Math.round(100-totalStrokes*1.5%40+charCount*4));
+  const lck=Math.min(99,Math.round((totalStrokes+charCount*7)%40+15+(b.lck||0)));
+  const maxHp=80+totalStrokes*2+charCount*10;
+  const skills=generateSkills(name,dominant,totalStrokes,chars);
+  return{atk,def,spd,lck,maxHp,elements:[...new Set(elements)],dominant,name,chars,totalStrokes,charCount,skills};
+}
+
+function getStrokes(ch){
+  if(STROKES[ch])return STROKES[ch];
+  const cp=ch.codePointAt(0);
+  if(cp>=0x4E00&&cp<=0x9FFF)return((cp-0x4E00)%15)+3;
+  if(ch>='A'&&ch<='Z')return ch.charCodeAt(0)-64;
+  if(ch>='a'&&ch<='z')return ch.charCodeAt(0)-96;
+  return 5;
+}
+function getElement(ch){
+  for(const[k,v]of Object.entries(ELEMENT_MAP)){if(ch.includes(k))return v[0];}
+  return['earth','metal','water','wood','fire'][getStrokes(ch)%5];
+}
+
+// ── 命運卡 ──
+const FATE_POOL=[
+  {name:'天降吉星',icon:'★',type:'blessing',atkBonus:15,desc:'攻擊力 +15，天命所歸'},
+  {name:'銅牆鐵壁',icon:'盾',type:'blessing',defBonus:20,desc:'防禦力 +20，固若金湯'},
+  {name:'神速加持',icon:'風',type:'blessing',spdBonus:20,desc:'速度 +20，先機在握'},
+  {name:'氣運爆棚',icon:'運',type:'blessing',lckBonus:25,desc:'氣運 +25，暴擊率大增'},
+  {name:'鳳凰祝福',icon:'鳳',type:'blessing',atkBonus:10,defBonus:10,desc:'攻守均衡，鳳凰庇佑'},
+  {name:'黑星纏身',icon:'煞',type:'curse',atkMalus:15,desc:'攻擊力 -15，諸事不順'},
+  {name:'千瘡百孔',icon:'破',type:'curse',defMalus:20,desc:'防禦力 -20，破綻百出'},
+  {name:'腳底抹油',icon:'滑',type:'curse',spdMalus:20,desc:'速度 -20，行動遲緩'},
+  {name:'倒霉連連',icon:'厄',type:'curse',lckMalus:20,desc:'氣運 -20，暴擊全無'},
+  {name:'平平無奇',icon:'凡',type:'neutral',desc:'命運無感應，靠實力決勝'},
+  {name:'天地無感',icon:'虛',type:'neutral',desc:'天機不可洩露，自求多福'},
+];
+
+const EVENTS=[
+  {text:'突然下大雨！場地濕滑，雙方速度本回合 -20%',effect:(s1,s2,hp,fl)=>{fl.rainRound=true;}},
+  {text:'颳起強風！火系招式威力減半',effect:(s1,s2,hp,fl)=>{fl.windRound=true;}},
+  {text:'地面震動！雙方各損失 10 HP',effect:(s1,s2,hp)=>{hp[0]-=10;hp[1]-=10;}},
+  {text:'對手一不小心滑倒，本回合跳過反擊！',effect:(s1,s2,hp,fl)=>{fl.skipCounter=true;}},
+  {text:'神秘氣場湧現！雙方暴擊率本回合翻倍',effect:(s1,s2,hp,fl)=>{fl.doubleCrit=true;}},
+  {text:'陽光強烈！金屬屬性耀眼發光，金系攻擊 +15',effect:(s1,s2,hp,fl)=>{fl.metalBoost=true;}},
+  {text:'霧氣瀰漫！所有招式命中率額外降低 20%',effect:(s1,s2,hp,fl)=>{fl.fogRound=true;}},
+  {text:'天上掉下補給包！HP 較低的一方恢復 20 HP',effect:(s1,s2,hp)=>{if(hp[0]<hp[1])hp[0]=Math.min(s1._maxHp||999,hp[0]+20);else hp[1]=Math.min(s2._maxHp||999,hp[1]+20);}},
+];
+
+function applyFate(s,f){
+  if(!f)return;
+  if(f.atkBonus)s.atk=Math.min(99,s.atk+f.atkBonus);
+  if(f.defBonus)s.def=Math.min(99,s.def+f.defBonus);
+  if(f.spdBonus)s.spd=Math.min(99,s.spd+f.spdBonus);
+  if(f.lckBonus)s.lck=Math.min(99,s.lck+f.lckBonus);
+  if(f.atkMalus)s.atk=Math.max(5,s.atk-f.atkMalus);
+  if(f.defMalus)s.def=Math.max(5,s.def-f.defMalus);
+  if(f.spdMalus)s.spd=Math.max(5,s.spd-f.spdMalus);
+  if(f.lckMalus)s.lck=Math.max(5,s.lck-f.lckMalus);
+}
+function drawFate(){return FATE_POOL[Math.floor(Math.random()*FATE_POOL.length)];}
+
+function renderFateCard(p,f){
+  const el=document.getElementById('fate'+p);
+  el.className='fate-card '+(f.type==='neutral'?'neutral-card':f.type);
+  el.innerHTML=`<span class="fate-icon">${f.icon||'？'}</span><div><div class="fate-name">${f.name}</div><div class="fate-desc">${f.desc}</div></div>`;
+}
+
+function renderCard(p,s){
+  document.getElementById('av'+p).textContent=s.name[0];
+  ['atk','def','spd','lck'].forEach(st=>{
+    document.getElementById(st+p).textContent=s[st];
+    document.getElementById(st+p+'-bar').style.width=s[st]+'%';
+  });
+  document.getElementById('hp'+p+'-val').textContent=Math.round(s.maxHp);
+  document.getElementById('hp'+p+'-bar').style.width='100%';
+  const tagsEl=document.getElementById('tags'+p);tagsEl.innerHTML='';
+  s.elements.forEach(e=>{const t=ELEMENT_INFO[e];if(!t)return;const sp=document.createElement('span');sp.className='tag '+t.cls;sp.textContent=t.label+'屬性';tagsEl.appendChild(sp);});
+  [s.charCount+'字名','筆畫'+s.totalStrokes].forEach(txt=>{const sp=document.createElement('span');sp.className='tag tag-neutral';sp.textContent=txt;tagsEl.appendChild(sp);});
+  const skEl=document.getElementById('skills'+p);skEl.innerHTML='';
+  s.skills.forEach(sk=>{
+    const div=document.createElement('div');div.className='skill-item';
+    const cdTxt=sk.cooldown?`<span class="skill-cd">CD ${sk.cooldown}</span>`:'';
+    const missTxt=sk.miss>0?`<span class="skill-cd">失手率 ${Math.round(sk.miss*100)}%</span>`:'';
+    div.innerHTML=`<div class="skill-name-row"><span class="skill-name">${sk.name}</span><span class="skill-badge badge-${sk.badge}">${{atk:'攻擊',def:'防禦',spd:'速度',ult:'必殺'}[sk.badge]}</span>${cdTxt}${missTxt}</div><div class="skill-desc">${sk.desc}</div>`;
+    skEl.appendChild(div);
+  });
+  // 同步看板名字
+  document.getElementById('sn'+p).textContent=s.name;
+}
+
+function updateCard(p){
+  const name=document.getElementById('name'+p).value.trim();
+  document.getElementById('av'+p).textContent=name?name[0]:'?';
+  if(name){const s=calcStats(name);renderCard(p,s);}
+}
+
+function updateStatus(hp,s1,s2,round){
+    document.getElementById('shp1').textContent=Math.max(0,Math.round(hp[0]));
+    document.getElementById('shp2').textContent=Math.max(0,Math.round(hp[1]));
+    document.getElementById('shp1-bar').style.width=Math.max(0,Math.round(hp[0]/s1.maxHp*100))+'%';
+    document.getElementById('shp2-bar').style.width=Math.max(0,Math.round(hp[1]/s2.maxHp*100))+'%';
+    if(round!==null)document.getElementById('sRound').textContent=round>0?`第 ${round} 回合`:'決鬥中';
+  }
+
+let battleRunning=false;
+
+async function startBattle(){
+  if(battleRunning)return;
+  const n1=document.getElementById('name1').value.trim(),n2=document.getElementById('name2').value.trim();
+  const log=document.getElementById('log');
+  if(!n1||!n2){log.innerHTML='<span class="log-empty">請先輸入兩位戰士的姓名。</span>';return;}
+
+  battleRunning=true;
+  document.getElementById('fightBtn').disabled=true;
+  document.getElementById('card1').classList.remove('winner');
+  document.getElementById('card2').classList.remove('winner');
+  document.getElementById('resultBanner').classList.remove('show');
+
+  const s1=calcStats(n1),s2=calcStats(n2);
+  const fate1=drawFate(),fate2=drawFate();
+  renderFateCard(1,fate1);renderFateCard(2,fate2);
+  applyFate(s1,fate1);applyFate(s2,fate2);
+  s1._maxHp=s1.maxHp;s2._maxHp=s2.maxHp;
+  renderCard(1,s1);renderCard(2,s2);
+
+  let hp=[s1.maxHp,s2.maxHp];
+  const cds1=s1.skills.map(()=>0),cds2=s2.skills.map(()=>0);
+  const collapsed=[false,false]; // 崩潰狀態追蹤
+  const reviveUsed=[false,false]; // 復活使用追蹤
+  log.innerHTML='';
+  updateStatus(hp,s1,s2,0);
+  document.getElementById('sCollapse').textContent='';
+
+  const elBonus=(a,d)=>CONQUERS[a.dominant]===d.dominant?1.3:CONQUERS[d.dominant]===a.dominant?0.75:1.0;
+
+  function checkCollapse(idx, stats, hpVal, prevCollapsed){
+    // HP 低於 30% 且尚未觸發過崩潰
+    if(!prevCollapsed && hpVal>0 && hpVal/stats.maxHp<0.3){
+      collapsed[idx]=true;
+      const card=document.getElementById('card'+(idx+1));
+      card.classList.add(idx===0?'collapse-p1':'collapse-p2');
+      addLog(`💥 ${stats.name} 進入【崩潰狀態】！攻擊暴漲，防禦歸零，可能發動連擊！`,'log-collapse');
+      // 更新側欄
+      const colText=document.getElementById('sCollapse');
+      const existing=colText.textContent;
+      colText.textContent=(existing?existing+' / ':'')+`${stats.name} 崩潰🔥`;
+    }
+  }
+
+  function addLog(text,cls){const d=document.createElement('div');d.className='log-line '+(cls||'');d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;}
+  function updateHp(){
+    document.getElementById('hp1-bar').style.width=Math.max(0,Math.round(hp[0]/s1.maxHp*100))+'%';
+    document.getElementById('hp2-bar').style.width=Math.max(0,Math.round(hp[1]/s2.maxHp*100))+'%';
+    document.getElementById('hp1-val').textContent=Math.max(0,Math.round(hp[0]));
+    document.getElementById('hp2-val').textContent=Math.max(0,Math.round(hp[1]));
+  }
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  function pickSkill(stats,cds){
+    if(cds[2]===0&&Math.random()<0.28){cds[2]=stats.skills[2].cooldown;return{sk:stats.skills[2],idx:2};}
+    if(Math.random()<0.5&&cds[0]===0)return{sk:stats.skills[0],idx:0};
+    if(cds[1]===0)return{sk:stats.skills[1],idx:1};
+    return null;
+  }
+
+  addLog(`${n1} 抽到命運卡：【${fate1.name}】`,'log-fate');
+  await sleep(300);
+  addLog(`${n2} 抽到命運卡：【${fate2.name}】`,'log-fate');
+  await sleep(400);
+  addLog('── 決鬥開始 ──','log-sep');
+  await sleep(400);
+
+  let round=1;
+  while(hp[0]>0&&hp[1]>0&&round<=20){
+    await sleep(440);
+    updateStatus(hp,s1,s2,round);
+    const fl={};
+    if(Math.random()<0.22){
+      const ev=EVENTS[Math.floor(Math.random()*EVENTS.length)];
+      ev.effect(s1,s2,hp,fl);
+      updateHp();updateStatus(hp,s1,s2,round);
+      addLog(`⚡ 隨機事件：${ev.text}`,'log-event');
+      await sleep(400);
+      if(hp[0]<=0||hp[1]<=0)break;
+    }
+    const order=s1.spd>=s2.spd?[[s1,s2,cds1,0,1],[s2,s1,cds2,1,0]]:[[s2,s1,cds2,1,0],[s1,s2,cds1,0,1]];
+    let ti=0;
+    for(const[atker,defer,acd,ai,di]of order){
+      if(hp[0]<=0||hp[1]<=0)break;
+      if(fl.skipCounter&&ti===1){addLog(`${defer.name} 因滑倒無法反擊！`,'log-miss');ti++;continue;}
+      ti++;
+      acd.forEach((_,i)=>{if(acd[i]>0)acd[i]--;});
+      const bonus=elBonus(atker,defer);
+      const pick=pickSkill(atker,acd);
+      const logCls=ai===0?'log-skill-p1':'log-skill-p2';
+      const isCollapsed=collapsed[ai]; // 攻擊方是否崩潰
+      const defCollapsed=collapsed[di]; // 防禦方是否崩潰（防禦歸零）
+
+      if(pick&&pick.sk.type!=='def'&&pick.sk.type!=='debuff'){
+        const sk=pick.sk;
+        let mr=sk.miss||0;
+        if(fl.fogRound)mr=Math.min(0.9,mr+0.2);
+        if(Math.random()<mr){
+          updateStatus(hp,s1,s2,round);
+          addLog(`第${round}回合  ${atker.name} 施展【${sk.name}】── 失手！`,'log-miss');
+          await sleep(280);continue;
+        }
+        const crit=Math.random()<(fl.doubleCrit?atker.lck/90:atker.lck/180);
+        let mult=sk.mult;
+        if(fl.windRound&&atker.dominant==='fire')mult*=0.5;
+        if(fl.metalBoost&&atker.dominant==='metal')mult+=0.3;
+        if(fl.rainRound)mult*=0.85;
+        if(isCollapsed)mult*=1.8; // 崩潰攻擊暴漲
+        const defFactor=defCollapsed?0:0.35; // 防禦方崩潰則防禦歸零
+        let dmg=Math.max(1,Math.round((atker.atk*mult-defer.def*defFactor)*bonus*(crit?1.7:1)*(0.88+Math.random()*0.25)));
+        hp[di]-=dmg;
+        updateHp();
+        checkCollapse(di,[s1,s2][di],hp[di],collapsed[di]);
+        const extras=[crit?'【暴擊】':'',bonus>1?'【元素剋制】':bonus<1?'【元素抵抗】':'',isCollapsed?'【崩潰爆發】':''].filter(Boolean).join(' ');
+        updateStatus(hp,s1,s2,round);
+        addLog(`第${round}回合  ${atker.name} 施展【${sk.name}】→ ${dmg} 傷害 ${extras}`,isCollapsed?'log-revenge':logCls);
+        // 崩潰狀態有 35% 機率觸發連擊
+        if(isCollapsed&&Math.random()<0.35&&hp[di]>0){
+          await sleep(200);
+          const bonusDmg=Math.max(1,Math.round(atker.atk*0.6*(0.8+Math.random()*0.4)));
+          hp[di]-=bonusDmg;
+          updateHp();
+          checkCollapse(di,[s1,s2][di],hp[di],collapsed[di]);
+          updateStatus(hp,s1,s2,round);
+          addLog(`第${round}回合  ↳ ${atker.name} 連擊！追加 ${bonusDmg} 傷害`,'log-revenge');
+        }
+      }else if(pick&&(pick.sk.type==='def'||pick.sk.type==='debuff')){
+        const eff=pick.sk.type==='def'?'進入防禦姿態':'使對手速度下降';
+        updateStatus(hp,s1,s2,round);
+        addLog(`第${round}回合  ${atker.name} 使出【${pick.sk.name}】，${eff}！`,logCls);
+      }else{
+        if(fl.fogRound&&Math.random()<0.15){addLog(`第${round}回合  ${atker.name} 普通攻擊 ── 失手！`,'log-miss');await sleep(260);continue;}
+        const dodge=Math.random()<(isCollapsed?0:defer.spd/320); // 崩潰時不會被閃避
+        if(dodge){addLog(`第${round}回合  ${defer.name} 閃避了 ${atker.name} 的攻擊`,'log-atk');}
+        else{
+          const crit=Math.random()<(fl.doubleCrit?atker.lck/100:atker.lck/200);
+          const defFactor=defCollapsed?0:0.4;
+          let atkMult=isCollapsed?1.8:1;
+          if(fl.rainRound)atkMult*=0.85;
+          let dmg=Math.max(1,Math.round((atker.atk*atkMult-defer.def*defFactor)*bonus*(crit?1.8:1)*(0.85+Math.random()*0.3)));
+          if(fl.metalBoost&&atker.dominant==='metal')dmg+=15;
+          hp[di]-=dmg;updateHp();
+          checkCollapse(di,[s1,s2][di],hp[di],collapsed[di]);
+          updateStatus(hp,s1,s2,round);
+          addLog(`第${round}回合  ${atker.name} 普通攻擊 → ${dmg} 傷害${crit?' 【暴擊】':''}${bonus>1?' 【剋制】':''}${isCollapsed?' 【崩潰爆發】':''}`,isCollapsed?'log-revenge':'log-atk');
+          // 普攻崩潰連擊機率低一點
+          if(isCollapsed&&Math.random()<0.2&&hp[di]>0){
+            await sleep(180);
+            const bonusDmg=Math.max(1,Math.round(atker.atk*0.5*(0.8+Math.random()*0.4)));
+            hp[di]-=bonusDmg;updateHp();
+            checkCollapse(di,[s1,s2][di],hp[di],collapsed[di]);
+            updateStatus(hp,s1,s2,round);
+            addLog(`第${round}回合  ↳ ${atker.name} 連擊！追加 ${bonusDmg} 傷害`,'log-revenge');
+          }
+        }
+      }
+      await sleep(300);
+    }
+
+    // ── 死者復活判定：第 1、2 回合結束時有人 HP≤0，且尚未用過復活 ──
+    if(round<=2 && (hp[0]<=0||hp[1]<=0)){
+      const deadIdx=hp[0]<=0?0:1;
+      const deadStats=[s1,s2][deadIdx];
+      if(!reviveUsed[deadIdx]){
+        reviveUsed[deadIdx]=true;
+        await sleep(500);
+        const reviveHp=Math.round(deadStats.maxHp*0.4);
+        hp[deadIdx]=reviveHp;
+        updateHp();updateStatus(hp,s1,s2,round);
+        addLog(`✨ 奇蹟發生！${deadStats.name} 在第 ${round} 回合被擊倒，卻於瀕死之際復活，以 ${reviveHp} HP 重返戰場！`,'log-revive');
+        await sleep(600);
+      }
+    }
+
+    round++;
+  }
+
+  await sleep(500);
+  addLog('── 決鬥結束 ──','log-sep');
+  const banner=document.getElementById('resultBanner');
+  const titleEl=document.getElementById('resultTitle');
+  const subEl=document.getElementById('resultSub');
+  if(hp[0]>hp[1]){
+    const rev=collapsed[0]?'，絕境反殺！':'';
+    titleEl.textContent=`${n1}  獲勝`;
+    subEl.textContent=`剩餘 HP ${Math.round(hp[0])}，以${s1.dominant==='fire'?'火焰':s1.dominant==='water'?'水勢':s1.dominant==='wood'?'木靈':s1.dominant==='metal'?'金鋒':'土力'}征服對手${rev}`;
+    document.getElementById('card1').classList.add('winner');
+  }else if(hp[1]>hp[0]){
+    const rev=collapsed[1]?'，絕境反殺！':'';
+    titleEl.textContent=`${n2}  獲勝`;
+    subEl.textContent=`剩餘 HP ${Math.round(hp[1])}，以${s2.dominant==='fire'?'火焰':s2.dominant==='water'?'水勢':s2.dominant==='wood'?'木靈':s2.dominant==='metal'?'金鋒':'土力'}征服對手${rev}`;
+    document.getElementById('card2').classList.add('winner');
+  }else{
+    titleEl.textContent='兩敗俱傷';
+    subEl.textContent='勢均力敵，同歸於盡';
+  }
+  banner.classList.add('show');
+  updateStatus(hp,s1,s2,null);
+  window.scrollTo({top:0,behavior:'smooth'});
+  battleRunning=false;
+  document.getElementById('fightBtn').disabled=false;
+}
+
+updateCard(1);
+updateCard(2);
+</script>
+</body>
+</html>
